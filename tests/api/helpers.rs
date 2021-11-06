@@ -1,5 +1,17 @@
-use docker_queue::{configuration::Settings, server::Server, telemetry::{get_subscriber, init_subscriber}};
+use anyhow::{Context, Result};
+use bollard::{
+    container::{
+        self, Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
+    },
+    Docker,
+};
+use docker_queue::{
+    configuration::Settings,
+    server::Server,
+    telemetry::{get_subscriber, init_subscriber},
+};
 use once_cell::sync::Lazy;
+use tracing::info;
 
 // Ensure that 'tracing' stack is only initialized once using `once_cell`
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -28,4 +40,39 @@ pub async fn spawn_app() -> TestApp {
     let _ = tokio::spawn(async move { app.start().await });
 
     TestApp { port }
+}
+
+#[tracing::instrument(name = "Run sleeping container")]
+pub async fn run_sleeping_container(secs: usize) -> Result<String> {
+    let docker = Docker::connect_with_local_defaults()?;
+    let secs = format!("{}", secs);
+    let image_config = container::Config {
+        cmd: Some(vec!["sleep", &secs]),
+        image: Some("alpine"),
+        ..Default::default()
+    };
+    let id = docker
+        .create_container::<&str, &str>(None, image_config)
+        .await?
+        .id;
+    docker
+        .start_container(&id, None::<StartContainerOptions<String>>)
+        .await
+        .context("Failed to run container")?;
+    Ok(id)
+}
+
+#[tracing::instrument(name = "Remove sleeping container")]
+pub async fn rm_sleeping_container(container_id: String) -> Result<()> {
+    let docker = Docker::connect_with_local_defaults()?;
+    docker
+        .remove_container(
+            &container_id,
+            Some(RemoveContainerOptions {
+                force: true,
+                ..Default::default()
+            }),
+        )
+        .await?;
+    Ok(())
 }
