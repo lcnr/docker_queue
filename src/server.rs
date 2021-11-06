@@ -6,7 +6,8 @@ use tower_http::{
     trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
-use tracing::Level;
+use tracing::{info_span, Level};
+use tracing_futures::WithSubscriber;
 
 pub struct Server {
     listener: TcpListener,
@@ -22,10 +23,10 @@ impl Server {
         tracing::info!("Serving at: http://127.0.0.1:{}", port);
         let app = Router::new()
             .route("/health_check", get(health_check))
+            .route("/list_containers", get(list_containers))
             .layer(
                 // More on TraceLayer: https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
                 TraceLayer::new_for_http()
-                    .make_span_with(tracing::Span::current())
                     .on_request(DefaultOnRequest::new().level(Level::INFO))
                     .on_response(
                         DefaultOnResponse::new()
@@ -54,5 +55,13 @@ impl Server {
 }
 
 async fn health_check() -> StatusCode {
+    StatusCode::OK
+}
+
+#[tracing::instrument(
+    name = "List containers",
+    // skip(expected_password_hash, password_candidate)
+)]
+async fn list_containers() -> StatusCode {
     StatusCode::OK
 }
