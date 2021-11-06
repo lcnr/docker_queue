@@ -1,13 +1,50 @@
-use crate::configuration::Settings;
+use crate::{configuration::Settings, error_chain_fmt, routes::list_containers};
 use anyhow::Result;
-use axum::{http::StatusCode, routing::get, Router};
-use std::net::TcpListener;
+use axum::{
+    body::{Bytes, Full},
+    http::{Response, StatusCode},
+    response::IntoResponse,
+    routing::get,
+    Json, Router,
+};
+use serde_json::json;
+use std::{convert::Infallible, net::TcpListener};
 use tower_http::{
     trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
-use tracing::{info_span, Level};
-use tracing_futures::WithSubscriber;
+use tracing::Level;
+
+#[derive(thiserror::Error)]
+pub enum ServerError {
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
+}
+
+impl std::fmt::Debug for ServerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        error_chain_fmt(self, f)
+    }
+}
+
+impl IntoResponse for ServerError {
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
+
+    fn into_response(self) -> Response<Self::Body> {
+        let (status, error_message) = match self {
+            ServerError::UnexpectedError(err) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+        };
+
+        let body = Json(json!({
+            "error": error_message,
+        }));
+
+        (status, body).into_response()
+    }
+}
 
 pub struct Server {
     listener: TcpListener,
@@ -55,13 +92,5 @@ impl Server {
 }
 
 async fn health_check() -> StatusCode {
-    StatusCode::OK
-}
-
-#[tracing::instrument(
-    name = "List containers",
-    // skip(expected_password_hash, password_candidate)
-)]
-async fn list_containers() -> StatusCode {
     StatusCode::OK
 }

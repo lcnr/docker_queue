@@ -1,8 +1,6 @@
 use anyhow::{Context, Result};
 use bollard::{
-    container::{
-        self, Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
-    },
+    container::{self, RemoveContainerOptions, StartContainerOptions},
     Docker,
 };
 use docker_queue::{
@@ -11,7 +9,6 @@ use docker_queue::{
     telemetry::{get_subscriber, init_subscriber},
 };
 use once_cell::sync::Lazy;
-use tracing::info;
 
 // Ensure that 'tracing' stack is only initialized once using `once_cell`
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -63,11 +60,11 @@ pub async fn run_sleeping_container(secs: usize) -> Result<String> {
 }
 
 #[tracing::instrument(name = "Remove sleeping container")]
-pub async fn rm_sleeping_container(container_id: String) -> Result<()> {
+pub async fn rm_sleeping_container(container_id: &str) -> Result<()> {
     let docker = Docker::connect_with_local_defaults()?;
     docker
         .remove_container(
-            &container_id,
+            container_id,
             Some(RemoveContainerOptions {
                 force: true,
                 ..Default::default()

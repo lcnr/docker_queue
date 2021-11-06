@@ -1,4 +1,4 @@
 #[derive(Debug)]
 pub struct Settings {
-	pub port: u16,
+    pub port: u16,
 }
