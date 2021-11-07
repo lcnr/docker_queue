@@ -1,7 +1,8 @@
 use crate::{
     configuration::Settings,
+    domain::QueuedContainer,
     error_chain_fmt,
-    server::{health_check, list_containers, queue_container},
+    server::{list_containers, queue_container},
 };
 use anyhow::Result;
 use axum::{
@@ -9,10 +10,14 @@ use axum::{
     http::{Response, StatusCode},
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
+    AddExtensionLayer, Json, Router,
 };
 use serde_json::json;
-use std::{convert::Infallible, net::TcpListener};
+use std::{
+    convert::Infallible,
+    net::TcpListener,
+    sync::{Arc, Mutex},
+};
 use tower_http::{
     trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
@@ -56,16 +61,32 @@ pub struct Server {
     app: Router,
 }
 
+pub struct State {
+    pub queued_containers: Mutex<Vec<QueuedContainer>>,
+}
+
+impl State {
+    fn new() -> Self {
+        Self {
+            queued_containers: Mutex::new(Vec::new()),
+        }
+    }
+}
+
+pub async fn health_check() {}
+
 impl Server {
     pub fn build(configuration: Settings) -> Result<Self> {
         tracing::info!("Configuration: {:?}", configuration);
         let listener = TcpListener::bind(format!("127.0.0.1:{}", configuration.port))?;
         let port = listener.local_addr()?.port();
-        tracing::info!("Serving at: http://127.0.0.1:{}", port);
+        let shared_state = Arc::new(State::new());
+
         let app = Router::new()
             .route("/health_check", get(health_check))
             .route("/list_containers", get(list_containers))
             .route("/queue_container", post(queue_container))
+            .layer(AddExtensionLayer::new(shared_state))
             .layer(
                 // More on TraceLayer: https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
                 TraceLayer::new_for_http()
@@ -89,6 +110,7 @@ impl Server {
     }
 
     pub async fn start(self) -> Result<()> {
+        tracing::info!("Serving at: http://127.0.0.1:{}", self.port);
         axum::Server::from_tcp(self.listener)?
             .serve(self.app.into_make_service())
             .await?;

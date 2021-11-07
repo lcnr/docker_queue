@@ -13,7 +13,7 @@ struct ShowContainer {
 impl From<Container> for ShowContainer {
     fn from(container: Container) -> Self {
         match container {
-            Container::Ignored(_) => todo!(),
+            // Container::Ignored(_) => todo!(),
             Container::Running(container) => ShowContainer {
                 id: container.id.unwrap_or_else(|| "-".into()),
                 image: container.image.unwrap_or_else(|| "-".into()),
@@ -27,7 +27,13 @@ impl From<Container> for ShowContainer {
                     .map(|o| o.concat())
                     .unwrap_or_else(|| "-".into()),
             },
-            Container::Queued(_) => todo!(),
+            Container::Queued(container) => ShowContainer {
+                id: "-".into(),
+                image: "-".into(),
+                command: "-".into(),
+                created: "-".into(),
+                names: container.name,
+            },
         }
     }
 }
