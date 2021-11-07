@@ -1,8 +1,8 @@
+pub mod client;
 pub mod configuration;
 pub mod domain;
 pub mod server;
 pub mod telemetry;
-pub mod client;
 
 fn error_chain_fmt(
     e: &impl std::error::Error,

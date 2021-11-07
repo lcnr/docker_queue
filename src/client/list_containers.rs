@@ -32,7 +32,7 @@ impl From<Container> for ShowContainer {
     }
 }
 
-fn get_max_lens(containers: &Vec<ShowContainer>, pad: usize) -> [usize; 5] {
+fn get_max_lens(containers: &[ShowContainer], pad: usize) -> [usize; 5] {
     let mut lens = [0; 5];
     containers.iter().for_each(|container| {
         lens[0] = lens[0].max(container.id.len());
