@@ -40,21 +40,10 @@ pub struct IgnoredContainer {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueuedContainer {
     name: String,
-    path: String, // TODO: use correct path struct
-    command: String,
-    queued_at: String, // TODO: use chrono or any time struct
 }
 
 impl QueuedContainer {
-    pub fn from_command(_command: String) -> Result<Self> {
-        todo!()
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
     }
-
-    pub async fn queue(&self) -> Result<Container> {
-        todo!()
-    }
-
-    // async fn execute(&self) -> Result<()> {
-    //     todo!()
-    // }
 }

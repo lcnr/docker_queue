@@ -17,8 +17,14 @@ struct Opts {
 
 #[derive(Debug, Parser)]
 enum SubCommand {
+    /// List containers
     List,
+    /// Start server
     Serve,
+    /// Queue container
+    Queue,
+    /// Remove container
+    Remove,
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -37,6 +43,8 @@ async fn main() -> Result<()> {
             let mut w = std::io::stdout();
             list_containers(opts.port, &mut w).await.unwrap();
         }
+        SubCommand::Queue => todo!(),
+        SubCommand::Remove => todo!(),
     }
 
     Ok(())
