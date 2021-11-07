@@ -1,10 +1,14 @@
-use crate::{configuration::Settings, error_chain_fmt, routes::list_containers};
+use crate::{
+    configuration::Settings,
+    error_chain_fmt,
+    server::{health_check, list_containers, queue_container},
+};
 use anyhow::Result;
 use axum::{
     body::{Bytes, Full},
     http::{Response, StatusCode},
     response::IntoResponse,
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use serde_json::json;
@@ -61,6 +65,7 @@ impl Server {
         let app = Router::new()
             .route("/health_check", get(health_check))
             .route("/list_containers", get(list_containers))
+            .route("/queue_container", post(queue_container))
             .layer(
                 // More on TraceLayer: https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
                 TraceLayer::new_for_http()
@@ -89,8 +94,4 @@ impl Server {
             .await?;
         Ok(())
     }
-}
-
-async fn health_check() -> StatusCode {
-    StatusCode::OK
 }

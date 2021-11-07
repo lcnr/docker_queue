@@ -1,4 +1,7 @@
-use bollard::models::ContainerSummaryInner;
+use std::collections::HashMap;
+
+use anyhow::Result;
+use bollard::{container::ListContainersOptions, models::ContainerSummaryInner, Docker};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -8,11 +11,22 @@ pub enum Container {
     Queued(QueuedContainer),
 }
 
-// impl Container {
-//     fn show(&self) {
-//         todo!()
-//     }
-// }
+pub async fn get_containers() -> Result<Vec<Container>> {
+    let docker = Docker::connect_with_local_defaults()?;
+    let filters = HashMap::from([("status", vec!["running"])]);
+    let options = Some(ListContainersOptions {
+        all: true,
+        filters,
+        ..Default::default()
+    });
+    let containers = docker
+        .list_containers(options)
+        .await?
+        .into_iter()
+        .map(|container| Container::Running(Box::new(container)))
+        .collect::<Vec<_>>();
+    Ok(containers)
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IgnoredContainer {
@@ -31,39 +45,16 @@ pub struct QueuedContainer {
     queued_at: String, // TODO: use chrono or any time struct
 }
 
-// impl QueuedContainer {
-//     fn from_command(command: String) -> Result<Self> {
-//         todo!()
-//     }
+impl QueuedContainer {
+    pub fn from_command(_command: String) -> Result<Self> {
+        todo!()
+    }
 
-//     async fn queue(&self) -> Result<Container> {
-//         todo!()
-//     }
+    pub async fn queue(&self) -> Result<Container> {
+        todo!()
+    }
 
-//     async fn execute(&self) -> Result<()> {
-//         todo!()
-//     }
-// }
-
-// pub async fn list_containers() -> Result<()> {
-//     let containers = get_containers().await?;
-//     containers
-//         .into_iter()
-//         .for_each(|container| container.show());
-//     Ok(())
-// }
-
-// pub async fn queue_container(command: String) -> Result<()> {
-//     let container = QueuedContainer::from_command(command)?;
-//     match container.queue().await? {
-//         Container::Running(container) => {
-//             // some information about the container being able to run
-//         }
-//         Container::Queued(container) => {
-//             // some information about the container being queued
-//         }
-//         _ => {}
-//     }
-//     list_containers().await?;
-//     Ok(())
-// }
+    // async fn execute(&self) -> Result<()> {
+    //     todo!()
+    // }
+}
