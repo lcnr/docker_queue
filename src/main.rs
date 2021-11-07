@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use docker_queue::{
-    client::list_containers,
+    client::ClientApp,
     configuration::Settings,
     server::Server,
     telemetry::{get_subscriber, init_subscriber},
@@ -31,20 +31,21 @@ enum SubCommand {
 async fn main() -> Result<()> {
     let opts = Opts::parse();
 
-    match opts.subcmd {
-        SubCommand::Serve => {
-            let subscriber = get_subscriber("docker_queue".into(), "info".into(), std::io::stdout);
-            init_subscriber(subscriber);
-            let app = Server::build(Settings { port: opts.port })?;
-            app.start().await?;
+    if let SubCommand::Serve = opts.subcmd {
+        let subscriber = get_subscriber("docker_queue".into(), "info".into(), std::io::stdout);
+        init_subscriber(subscriber);
+        let app = Server::build(Settings { port: opts.port })?;
+        app.start().await?;
+    } else {
+        let mut client = ClientApp::new(opts.port, std::io::stdout());
+        match opts.subcmd {
+            SubCommand::List => {
+                client.list_containers().await?;
+            }
+            SubCommand::Queue => todo!(),
+            SubCommand::Remove => todo!(),
+            SubCommand::Serve => {}
         }
-        SubCommand::List => {
-            // TODO healthcheck
-            let mut w = std::io::stdout();
-            list_containers(opts.port, &mut w).await.unwrap();
-        }
-        SubCommand::Queue => todo!(),
-        SubCommand::Remove => todo!(),
     }
 
     Ok(())

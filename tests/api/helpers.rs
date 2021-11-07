@@ -4,6 +4,7 @@ use bollard::{
     Docker,
 };
 use docker_queue::{
+    client::ClientApp,
     configuration::Settings,
     server::Server,
     telemetry::{get_subscriber, init_subscriber},
@@ -26,6 +27,16 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 
 pub struct TestApp {
     pub port: u16,
+    pub client: ClientApp<Vec<u8>>,
+}
+
+impl TestApp {
+    pub fn get_client_output(&mut self) -> String {
+        let output = String::from_utf8(self.client.writer.clone())
+            .expect("Failed to get string from buffer.");
+        self.client.writer.clear();
+        output
+    }
 }
 
 pub async fn spawn_app() -> TestApp {
@@ -35,8 +46,9 @@ pub async fn spawn_app() -> TestApp {
     let app = Server::build(Settings { port: 0 }).expect("Failed to build application.");
     let port = app.port();
     let _ = tokio::spawn(async move { app.start().await });
+    let client = ClientApp::new(port, Vec::new());
 
-    TestApp { port }
+    TestApp { port, client }
 }
 
 #[tracing::instrument(name = "Run sleeping container")]

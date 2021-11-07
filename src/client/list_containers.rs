@@ -1,3 +1,4 @@
+use super::ClientApp;
 use crate::domain::Container;
 use anyhow::{Context, Result};
 use console::{pad_str, style, Alignment};
@@ -67,32 +68,34 @@ fn get_print_line(container: ShowContainer, max_lens: [usize; 5]) -> String {
 
 const HEADERS: [&str; 5] = ["id", "image", "command", "created", "names"];
 
-pub async fn list_containers(port: u16, w: &mut impl std::io::Write) -> Result<()> {
-    let client = reqwest::Client::new();
+impl<W: std::io::Write> ClientApp<W> {
+    pub async fn list_containers(&mut self) -> Result<()> {
+        let client = reqwest::Client::new();
 
-    let containers = client
-        .get(format!("http://127.0.0.1:{}/list_containers", port))
-        .send()
-        .await
-        .context("Failed to execute request.")?
-        .json::<Vec<Container>>()
-        .await?
-        .into_iter()
-        .map(ShowContainer::from)
-        .collect::<Vec<_>>();
+        let containers = client
+            .get(format!("http://127.0.0.1:{}/list_containers", self.port))
+            .send()
+            .await
+            .context("Failed to execute request.")?
+            .json::<Vec<Container>>()
+            .await?
+            .into_iter()
+            .map(ShowContainer::from)
+            .collect::<Vec<_>>();
 
-    let max_lens = get_max_lens(&containers, 2);
+        let max_lens = get_max_lens(&containers, 2);
 
-    let headers = HEADERS
-        .iter()
-        .zip(max_lens)
-        .map(|(header, len)| pad_str(header, len, Alignment::Left, None))
-        .collect::<String>();
-    writeln!(w, "{}", style(headers).bold())?;
+        let headers = HEADERS
+            .iter()
+            .zip(max_lens)
+            .map(|(header, len)| pad_str(header, len, Alignment::Left, None))
+            .collect::<String>();
+        writeln!(self.writer, "{}", style(headers).bold())?;
 
-    for container in containers {
-        writeln!(w, "{}", get_print_line(container, max_lens))?;
+        for container in containers {
+            writeln!(self.writer, "{}", get_print_line(container, max_lens))?;
+        }
+
+        Ok(())
     }
-
-    Ok(())
 }
