@@ -6,17 +6,23 @@ use bollard::{container::ListContainersOptions, Docker};
 use std::{collections::HashMap, sync::Arc};
 
 #[tracing::instrument(name = "List containers", skip(state))]
-pub async fn list_containers(
+pub(super) async fn list_containers(
     Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<Vec<Container>>, ServerError> {
-    let mut containers = get_running_containers().await?;
-    let mut queued_containers = { state.queued_containers.lock().unwrap().clone() }
-        .into_iter()
-        .map(Container::Queued)
-        .collect::<Vec<_>>();
-    containers.append(&mut queued_containers);
-
+    let containers = state.get_containers().await?;
     Ok(Json(containers))
+}
+
+impl State {
+    async fn get_containers(&self) -> Result<Vec<Container>> {
+        let mut containers = get_running_containers().await?;
+        let mut queued_containers = { self.queued_containers.lock().unwrap().clone() }
+            .into_iter()
+            .map(Container::Queued)
+            .collect::<Vec<_>>();
+        containers.append(&mut queued_containers);
+        Ok(containers)
+    }
 }
 
 pub async fn get_running_containers() -> Result<Vec<Container>> {

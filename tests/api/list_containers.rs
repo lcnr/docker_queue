@@ -22,8 +22,8 @@ async fn list_containers_contains_running_containers() {
 async fn list_containers_contains_queued_containers() {
     // Arrange
     let mut app = spawn_app().await;
-    let name = "a_queued_container";
-    app.client.queue_container(name).await.unwrap();
+    let name = "docker run some_image";
+    app.client.queue_container(name, false).await.unwrap();
     println!("{}", app.get_client_output());
 
     // Act

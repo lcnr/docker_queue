@@ -6,6 +6,7 @@ use docker_queue::{
     server::Server,
     telemetry::{get_subscriber, init_subscriber},
 };
+use tracing::debug;
 
 #[derive(Debug, Parser)]
 struct Opts {
@@ -22,27 +23,33 @@ enum SubCommand {
     /// Start server
     Serve,
     /// Queue container
-    Queue,
+    Queue(QueueContainer),
     /// Remove container
     Remove,
+}
+
+#[derive(Debug, Parser)]
+struct QueueContainer {
+    command: String,
+    #[clap(long)]
+    paused: bool,
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     let opts = Opts::parse();
+    let subscriber = get_subscriber("docker_queue".into(), "info".into(), std::io::stdout);
+    init_subscriber(subscriber);
+    debug!("{:#?}", opts);
 
     if let SubCommand::Serve = opts.subcmd {
-        let subscriber = get_subscriber("docker_queue".into(), "info".into(), std::io::stdout);
-        init_subscriber(subscriber);
         let app = Server::build(Settings { port: opts.port })?;
         app.start().await?;
     } else {
         let mut client = ClientApp::new(opts.port, std::io::stdout());
         match opts.subcmd {
-            SubCommand::List => {
-                client.list_containers().await?;
-            }
-            SubCommand::Queue => todo!(),
+            SubCommand::List => client.list_containers().await?,
+            SubCommand::Queue(opts) => client.queue_container(opts.command, opts.paused).await?,
             SubCommand::Remove => todo!(),
             SubCommand::Serve => {}
         }
