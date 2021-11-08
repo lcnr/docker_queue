@@ -46,7 +46,7 @@ impl<W: std::io::Write> ClientApp<W> {
             queued_container.status()
         )?;
 
-        if paused {
+        if !paused {
             if self.is_queue_ready(queued_container).await? {
                 // if yes run container
             }
