@@ -50,8 +50,9 @@ fn get_max_lens(containers: &[ShowContainer], pad: usize) -> [usize; 6] {
         lens[2] = lens[2].max(container.image.len());
         lens[3] = lens[3].max(container.command.len());
         lens[4] = lens[4].max(container.created.len());
-        lens[5] = lens[5].max(container.names.len());
+        // lens[5] = lens[5].max(container.names.len());
     });
+    lens[5] = 0;
     lens.iter_mut().for_each(|len| *len += pad);
     lens
 }

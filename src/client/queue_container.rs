@@ -3,7 +3,7 @@ use crate::domain::QueuedContainer;
 use anyhow::{Context, Result};
 
 impl<W: std::io::Write> ClientApp<W> {
-    pub async fn is_queue_ready(&self, _container: QueuedContainer) -> Result<bool> {
+    pub async fn is_queue_ready(&self, _container: &QueuedContainer) -> Result<bool> {
         let n = self
             .get_containers()
             .await?
@@ -47,10 +47,11 @@ impl<W: std::io::Write> ClientApp<W> {
         )?;
 
         if !paused {
-            if self.is_queue_ready(queued_container).await? {
-                // if yes run container
+            if self.is_queue_ready(&queued_container).await? {
+                self.start_container(queued_container).await?;
             }
         }
+        self.list_containers().await?;
 
         Ok(())
     }
