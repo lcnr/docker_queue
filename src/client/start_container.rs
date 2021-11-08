@@ -1,10 +1,12 @@
-use crate::domain::QueuedContainer;
-
 use super::ClientApp;
+use crate::domain::{QueuedContainer, RunningContainerId};
 use anyhow::Result;
 
 impl<W: std::io::Write> ClientApp<W> {
-    pub async fn start_container(&mut self, queued_container: QueuedContainer) -> Result<()> {
+    pub async fn start_container(
+        &mut self,
+        queued_container: QueuedContainer,
+    ) -> Result<RunningContainerId> {
         writeln!(
             self.writer,
             "Running \"{}\": \"{}\"",
@@ -12,6 +14,6 @@ impl<W: std::io::Write> ClientApp<W> {
             queued_container.command()
         )?;
 
-        Ok(())
+        todo!()
     }
 }
