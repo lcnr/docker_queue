@@ -30,7 +30,7 @@ mod tests {
         tokio::spawn(async {
             start_launcher_task(state2, rx).await;
         });
-        let container = QueuedContainer::new("docker run some_image", false).unwrap();
+        let container = QueuedContainer::new("docker run -d some_image").unwrap();
         tx.send(container.clone()).await.unwrap();
         sleep(Duration::from_millis(100)).await;
         assert!(state.queued_containers.lock().unwrap().contains(&container));

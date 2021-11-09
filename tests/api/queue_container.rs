@@ -4,7 +4,7 @@ use crate::helpers::spawn_app;
 async fn queue_container_adds_to_queue() {
     // Arrange
     let mut app = spawn_app().await;
-    let command = "docker run some_image";
+    let command = "docker run -d some_image";
 
     // Act
     app.client.queue_container(command, true).await.unwrap();
@@ -19,7 +19,7 @@ async fn queue_container_adds_to_queue() {
 async fn queue_container_runs_if_no_running_containers() {
     // Arrange
     let mut app = spawn_app().await;
-    let command = "docker run some_image";
+    let command = "docker run -d --rm alpine sleep 2";
     app.client.queue_container(command, false).await.unwrap();
     println!("{}", app.get_client_output());
 

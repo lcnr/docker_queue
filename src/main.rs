@@ -30,7 +30,9 @@ enum SubCommand {
 
 #[derive(Debug, Parser)]
 struct QueueContainer {
+    /// A docker run command, should include a detach flag as "-d" or "--detach"
     command: String,
+    /// The container gets queued but not started even if the queue is empty
     #[clap(long)]
     paused: bool,
 }

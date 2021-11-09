@@ -26,7 +26,10 @@ impl<W: std::io::Write> ClientApp<W> {
         paused: bool,
     ) -> Result<()> {
         let client = reqwest::Client::new();
-        let queued_container = QueuedContainer::new(command, paused)?;
+        let mut queued_container = QueuedContainer::new(command)?;
+        if !paused {
+            queued_container.queue();
+        }
 
         let response = client
             .post(format!("http://127.0.0.1:{}/queue_container", self.port))
@@ -46,7 +49,7 @@ impl<W: std::io::Write> ClientApp<W> {
             queued_container.status()
         )?;
 
-        if !paused && self.is_queue_ready(&queued_container).await? {
+        if !queued_container.is_paused() && self.is_queue_ready(&queued_container).await? {
             self.start_container(queued_container).await?;
         }
 

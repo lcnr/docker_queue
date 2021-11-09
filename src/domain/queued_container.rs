@@ -38,22 +38,32 @@ impl std::fmt::Display for QueuedContainerStatus {
 }
 
 impl QueuedContainer {
-    pub fn new(command: impl Into<String>, paused: bool) -> Result<Self, QueuedContainerError> {
+    /// * `command` - A docker run command, should include a detach flag as "-d" or "--detach"
+    pub fn new(command: impl Into<String>) -> Result<Self, QueuedContainerError> {
         let id = Uuid::new_v4();
-        let command = command.into();
+        let command: String = command.into();
         if !command.starts_with("docker run") {
-            return Err(QueuedContainerError::InvalidQueuedCommand(command));
+            return Err(QueuedContainerError::InvalidQueuedCommand(
+                "Should start with \"docker run\"".into(),
+            ));
+        }
+        let detach_flags = command
+            .split_whitespace()
+            .skip(2)
+            .take_while(|x| x.starts_with('-'))
+            .filter(|&x| (x == "-d") | (x == "--detach") | (x == "--detach=true"))
+            .count();
+
+        if detach_flags != 1 {
+            return Err(QueuedContainerError::InvalidQueuedCommand(
+                "Include a detach flag such as: \"-d\" or \"--detach\"".into(),
+            ));
         }
 
-        let status = if paused {
-            QueuedContainerStatus::Paused
-        } else {
-            QueuedContainerStatus::Queued
-        };
         Ok(Self {
             id,
             command,
-            status,
+            status: QueuedContainerStatus::Paused,
         })
     }
 
@@ -71,6 +81,20 @@ impl QueuedContainer {
     pub fn status(&self) -> &QueuedContainerStatus {
         &self.status
     }
+
+    /// Set the queued container's status to `QueuedContainerStatus::Queued`.
+    pub fn queue(&mut self) {
+        self.status = QueuedContainerStatus::Queued;
+    }
+
+    /// Set the queued container's status to `QueuedContainerStatus::Paused`.
+    pub fn pause(&mut self) {
+        self.status = QueuedContainerStatus::Paused;
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.status == QueuedContainerStatus::Paused
+    }
 }
 
 #[cfg(test)]
@@ -79,10 +103,21 @@ mod tests {
     use claim::{assert_err, assert_ok};
 
     #[test]
-    fn reject_queued_containers_with_invalid_command() {
-        let valid_cmd = "docker run some_image";
-        assert_ok!(QueuedContainer::new(valid_cmd, false));
-        let invalid_cmd = "docker lalala";
-        assert_err!(QueuedContainer::new(invalid_cmd, false));
+    fn reject_queued_containers_without_run() {
+        // Valid commands
+        assert_ok!(QueuedContainer::new("docker run -d some_image"));
+        // Invalid commands
+        assert_err!(QueuedContainer::new("docker lalala"));
+    }
+
+    #[test]
+    fn reject_queued_containers_without_detach() {
+        // Valid commands
+        assert_ok!(QueuedContainer::new("docker run -d some_image"));
+        assert_ok!(QueuedContainer::new("docker run --detach some_image"));
+        assert_ok!(QueuedContainer::new("docker run --detach=true some_image"));
+        // Invalid commands
+        assert_err!(QueuedContainer::new("docker run some_image"));
+        assert_err!(QueuedContainer::new("docker run --detach=false some_image"));
     }
 }
