@@ -3,6 +3,7 @@ mod queue_container;
 mod start_container;
 
 use crate::error_chain_fmt;
+use axum::http::StatusCode;
 
 pub struct ClientApp<W: std::io::Write> {
     pub port: u16,
@@ -17,6 +18,8 @@ impl<W: std::io::Write> ClientApp<W> {
 
 #[derive(thiserror::Error)]
 pub enum ClientError {
+    #[error("Unexpected status received: {0}")]
+    ServerStatusError(StatusCode),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
 }

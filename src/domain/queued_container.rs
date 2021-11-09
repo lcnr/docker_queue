@@ -95,6 +95,10 @@ impl QueuedContainer {
     pub fn is_paused(&self) -> bool {
         self.status == QueuedContainerStatus::Paused
     }
+
+    pub fn is_queued(&self) -> bool {
+        self.status == QueuedContainerStatus::Queued
+    }
 }
 
 #[cfg(test)]

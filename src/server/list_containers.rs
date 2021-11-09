@@ -14,7 +14,7 @@ pub(super) async fn list_containers(
 }
 
 impl State {
-    async fn get_containers(&self) -> Result<Vec<Container>> {
+    pub(super) async fn get_containers(&self) -> Result<Vec<Container>> {
         let mut containers = get_running_containers().await?;
         let mut queued_containers = { self.queued_containers.lock().unwrap().clone() }
             .into_iter()

@@ -1,25 +1,8 @@
 use super::ClientApp;
-use crate::domain::QueuedContainer;
+use crate::{client::ClientError, domain::QueuedContainer};
 use anyhow::{Context, Result};
 
 impl<W: std::io::Write> ClientApp<W> {
-    pub async fn is_queue_ready(&self, _container: &QueuedContainer) -> Result<bool> {
-        let n = self
-            .get_containers()
-            .await?
-            .into_iter()
-            .filter(|container| match container {
-                crate::domain::Container::Running(_) => true,
-                crate::domain::Container::Queued(_) => false, // TODO: check time order
-            })
-            .count();
-        Ok(n == 0)
-    }
-
-    pub async fn run_container(&self, _container: QueuedContainer) -> Result<()> {
-        Ok(())
-    }
-
     pub async fn queue_container(
         &mut self,
         command: impl Into<String>,
@@ -39,7 +22,7 @@ impl<W: std::io::Write> ClientApp<W> {
             .context("Failed to execute request.")?;
 
         if !response.status().is_success() {
-            writeln!(self.writer, "status error")?;
+            return Err(ClientError::ServerStatusError(response.status()).into());
         }
 
         writeln!(
@@ -48,10 +31,6 @@ impl<W: std::io::Write> ClientApp<W> {
             queued_container.id(),
             queued_container.status()
         )?;
-
-        if !queued_container.is_paused() && self.is_queue_ready(&queued_container).await? {
-            self.start_container(queued_container).await?;
-        }
 
         self.list_containers().await?;
 
