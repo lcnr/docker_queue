@@ -32,8 +32,6 @@ impl<W: std::io::Write> ClientApp<W> {
             queued_container.status()
         )?;
 
-        self.list_containers().await?;
-
         Ok(())
     }
 }

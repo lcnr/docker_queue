@@ -24,7 +24,7 @@ async fn queue_container_runs_if_no_running_containers() {
     let command = "docker run -d --rm alpine sleep 5";
     app.client.queue_container(command, false).await.unwrap();
     println!("{}", app.get_client_output());
-    sleep(Duration::from_millis(200)).await;
+    sleep(Duration::from_millis(3500)).await;
 
     // Act
     app.client.list_containers().await.unwrap();
@@ -34,7 +34,7 @@ async fn queue_container_runs_if_no_running_containers() {
     // Assert
     let line = output
         .lines()
-        .filter(|line| line.contains(command))
+        .filter(|line| line.contains("sleep 5"))
         .collect::<String>();
-    assert!(line.contains("Running"));
+    assert!(line.contains("Running"), "{:?}", line);
 }

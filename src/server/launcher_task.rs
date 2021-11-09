@@ -64,7 +64,7 @@ impl State {
     // }
 }
 
-// #[tracing::instrument(name = "Run container", skip(container), fields(container = %container.id()))]
+#[tracing::instrument(name = "Run container", skip(container), fields(container = %container.id()))]
 async fn run_container(container: QueuedContainer) -> Result<RunningContainerId> {
     let output = Command::new("docker")
         .args(container.get_cmd_args())
@@ -79,6 +79,7 @@ async fn run_container(container: QueuedContainer) -> Result<RunningContainerId>
 
     let stdout = String::from_utf8(output.stdout).context("Failed to parse stdout.")?;
     let id = RunningContainerId::new(stdout);
+    info!("Running id: {:?}", id.as_ref());
     Ok(id)
 }
 
