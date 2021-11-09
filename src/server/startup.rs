@@ -1,19 +1,14 @@
 use super::State;
 use crate::{
     configuration::Settings,
-    error_chain_fmt,
     server::{list_containers, queue_container, start_launcher_task},
 };
 use anyhow::Result;
 use axum::{
-    body::{Bytes, Full},
-    http::{Response, StatusCode},
-    response::IntoResponse,
     routing::{get, post},
-    AddExtensionLayer, Json, Router,
+    AddExtensionLayer, Router,
 };
-use serde_json::json;
-use std::{convert::Infallible, net::TcpListener, sync::Arc};
+use std::{net::TcpListener, sync::Arc};
 use tokio::{sync::mpsc, task::JoinHandle};
 use tower_http::{
     trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
@@ -23,37 +18,6 @@ use tracing::{
     log::{error, info},
     Level,
 };
-
-#[derive(thiserror::Error)]
-pub enum ServerError {
-    #[error(transparent)]
-    UnexpectedError(#[from] anyhow::Error),
-}
-
-impl std::fmt::Debug for ServerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        error_chain_fmt(self, f)
-    }
-}
-
-impl IntoResponse for ServerError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
-        let (status, error_message) = match self {
-            ServerError::UnexpectedError(err) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-            }
-        };
-
-        let body = Json(json!({
-            "error": error_message,
-        }));
-
-        (status, body).into_response()
-    }
-}
 
 pub struct Server {
     listener: TcpListener,
