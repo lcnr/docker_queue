@@ -67,6 +67,14 @@ impl QueuedContainer {
         })
     }
 
+    pub fn get_cmd_args(&self) -> Vec<&str> {
+        self.command
+            .split_whitespace()
+            .into_iter()
+            .skip(1)
+            .collect::<Vec<_>>()
+    }
+
     /// Get a reference to the queued container's id.
     pub fn id(&self) -> String {
         self.id.to_string()

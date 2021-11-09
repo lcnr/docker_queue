@@ -3,7 +3,7 @@ use crate::domain::{QueuedContainer, RunningContainerId};
 use anyhow::Result;
 
 impl<W: std::io::Write> ClientApp<W> {
-    pub async fn start_container(
+    async fn _start_container(
         &mut self,
         queued_container: QueuedContainer,
     ) -> Result<RunningContainerId> {

@@ -17,17 +17,17 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use std::convert::Infallible;
 use std::sync::Mutex;
+use std::{collections::VecDeque, convert::Infallible};
 
 struct State {
-    queued_containers: Mutex<Vec<QueuedContainer>>,
+    queued_containers: Mutex<VecDeque<QueuedContainer>>,
 }
 
 impl State {
     fn new() -> Self {
         Self {
-            queued_containers: Mutex::new(Vec::new()),
+            queued_containers: Mutex::new(VecDeque::new()),
         }
     }
 }

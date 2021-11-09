@@ -2,7 +2,7 @@ use super::State;
 use crate::{domain::Container, server::ServerError};
 use anyhow::Result;
 use axum::{extract::Extension, Json};
-use bollard::{container::ListContainersOptions, Docker};
+use bollard::{container::ListContainersOptions, models::ContainerSummaryInner, Docker};
 use std::{collections::HashMap, sync::Arc};
 
 #[tracing::instrument(name = "List containers", skip(state))]
@@ -15,7 +15,11 @@ pub(super) async fn list_containers(
 
 impl State {
     pub(super) async fn get_containers(&self) -> Result<Vec<Container>> {
-        let mut containers = get_running_containers().await?;
+        let mut containers = get_running_containers()
+            .await?
+            .into_iter()
+            .map(|container| Container::Running(Box::new(container)))
+            .collect::<Vec<_>>();
         let mut queued_containers = { self.queued_containers.lock().unwrap().clone() }
             .into_iter()
             .map(Container::Queued)
@@ -25,7 +29,7 @@ impl State {
     }
 }
 
-pub async fn get_running_containers() -> Result<Vec<Container>> {
+pub async fn get_running_containers() -> Result<Vec<ContainerSummaryInner>> {
     let docker = Docker::connect_with_local_defaults()?;
     let filters = HashMap::from([("status", vec!["running"])]);
     let options = Some(ListContainersOptions {
@@ -38,7 +42,7 @@ pub async fn get_running_containers() -> Result<Vec<Container>> {
         .list_containers(options)
         .await?
         .into_iter()
-        .map(|container| Container::Running(Box::new(container)))
+        .map(|container| container)
         .collect::<Vec<_>>();
 
     Ok(containers)

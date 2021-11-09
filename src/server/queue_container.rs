@@ -5,7 +5,7 @@ use axum::{extract::Extension, Json};
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
-#[tracing::instrument(name = "Queue container", skip(state))]
+#[tracing::instrument(name = "Queue container", skip(state, tx, queued_container), fields(container = %queued_container.id()))]
 pub(super) async fn queue_container(
     Json(queued_container): Json<QueuedContainer>,
     Extension(state): Extension<Arc<State>>,
@@ -16,7 +16,7 @@ pub(super) async fn queue_container(
         .queued_containers
         .lock()
         .unwrap()
-        .push(queued_container);
+        .push_back(queued_container);
     if check_run {
         tx.send(TaskMessage::CheckRun)
             .await

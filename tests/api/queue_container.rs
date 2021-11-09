@@ -1,4 +1,6 @@
 use crate::helpers::spawn_app;
+use std::time::Duration;
+use tokio::time::sleep;
 
 #[tokio::test]
 async fn queue_container_adds_to_queue() {
@@ -19,9 +21,10 @@ async fn queue_container_adds_to_queue() {
 async fn queue_container_runs_if_no_running_containers() {
     // Arrange
     let mut app = spawn_app().await;
-    let command = "docker run -d --rm alpine sleep 2";
+    let command = "docker run -d --rm alpine sleep 5";
     app.client.queue_container(command, false).await.unwrap();
     println!("{}", app.get_client_output());
+    sleep(Duration::from_millis(200)).await;
 
     // Act
     app.client.list_containers().await.unwrap();
