@@ -1,7 +1,7 @@
 use super::State;
 use crate::{
     configuration::Settings,
-    server::{list_containers, queue_container, start_launcher_task},
+    server::{get_running_container, list_containers, queue_container, start_launcher_task},
 };
 use anyhow::Result;
 use axum::{
@@ -45,6 +45,7 @@ impl Server {
             .route("/health_check", get(health_check))
             .route("/list_containers", get(list_containers))
             .route("/queue_container", post(queue_container))
+            .route("/get_running_container", get(get_running_container))
             .layer(AddExtensionLayer::new(shared_state))
             .layer(AddExtensionLayer::new(tx))
             .layer(

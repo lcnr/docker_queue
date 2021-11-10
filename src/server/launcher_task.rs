@@ -8,7 +8,7 @@ use bollard::Docker;
 use futures::TryStreamExt;
 use std::sync::Arc;
 use tokio::{process::Command, sync::mpsc};
-use tracing::{error, info};
+use tracing::{debug, error, info, Instrument};
 
 #[derive(thiserror::Error)]
 pub enum LauncherTaskError {
@@ -53,8 +53,11 @@ pub(super) async fn start_launcher_task(
             TaskMessage::CheckRun => match state.run_first_container_in_queue().await {
                 Ok(Some(id)) => {
                     let tx = tx.clone();
-                    tokio::spawn(async {
-                        wait_for_container(id, tx).await;
+                    tokio::spawn({
+                        async {
+                            wait_for_container(id, tx).await;
+                        }
+                        .instrument(tracing::Span::current())
                     });
                     Ok(())
                 }
@@ -62,7 +65,7 @@ pub(super) async fn start_launcher_task(
                 Err(error) => Err(error),
             },
             TaskMessage::RunningFinished => {
-                // todo
+                *state.running_container.lock().unwrap() = None;
                 Ok(())
             }
             TaskMessage::Error(error) => Err(error),
@@ -98,7 +101,6 @@ impl State {
 async fn run_container(
     container: QueuedContainer,
 ) -> Result<RunningContainerId, LauncherTaskError> {
-    info!("{:#?}", container.get_cmd_args());
     let output = Command::new("docker")
         .args(container.get_cmd_args()?)
         .output()
@@ -127,7 +129,7 @@ async fn wait_for_container(id: RunningContainerId, tx: mpsc::Sender<TaskMessage
             {
                 Ok(responses) => {
                     responses.iter().for_each(|response| {
-                        info!("{:?}", response);
+                        debug!("{:?}", response);
                     });
                     tx.send(TaskMessage::RunningFinished)
                         .await

@@ -1,4 +1,6 @@
 use crate::helpers::spawn_app;
+use std::time::Duration;
+use tokio::time::{sleep, timeout};
 
 #[tokio::test]
 async fn queue_container_adds_to_queue() {
@@ -85,19 +87,19 @@ async fn queue_container_gets_removed_from_running_state_when_finish_execution()
     )
     .await
     .unwrap();
-    // app.client.list_containers().await.unwrap();
-    // let output = app.get_client_output();
-    // println!("{}", output);
 
     // Assert
-    // let line1 = output
-    //     .lines()
-    //     .filter(|line| line.contains("queue_container_queues_if_already_running1"))
-    //     .collect::<String>();
-    // let line2 = output
-    //     .lines()
-    //     .filter(|line| line.contains("queue_container_queues_if_already_running2"))
-    //     .collect::<String>();
-    // assert!(line1.contains("Running"), "{:?}", line1);
-    // assert!(line2.contains("Queued"), "{:?}", line2);
+    timeout(Duration::from_secs(15), async {
+        loop {
+            sleep(Duration::from_millis(250)).await;
+            app.client.get_running_container().await.unwrap();
+            let output = app.get_client_output();
+            println!("{}", output);
+            if output == "-\n" {
+                break;
+            }
+        }
+    })
+    .await
+    .unwrap();
 }
