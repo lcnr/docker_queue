@@ -12,33 +12,76 @@ struct ShowContainer {
     names: String,
 }
 
+const COMMAND_MAX_LEN: usize = 40;
+
+struct ShowContainerBuilder {
+    status: String,
+    id: String,
+    image: String,
+    command: String,
+    created: String,
+    names: String,
+}
+
+impl ShowContainerBuilder {
+    fn build(self) -> ShowContainer {
+        let mut command = self.command;
+        if command.len() > COMMAND_MAX_LEN {
+            command = command
+                .chars()
+                .take(COMMAND_MAX_LEN - 3)
+                .chain("...".chars())
+                .collect();
+        }
+        ShowContainer {
+            status: self.status,
+            id: self.id,
+            image: self.image,
+            command,
+            created: self.created,
+            names: self.names,
+        }
+    }
+}
+
+impl Default for ShowContainerBuilder {
+    fn default() -> Self {
+        Self {
+            status: "-".to_string(),
+            id: "-".to_string(),
+            image: "-".to_string(),
+            command: "-".to_string(),
+            created: "-".to_string(),
+            names: "-".to_string(),
+        }
+    }
+}
+
 impl From<Container> for ShowContainer {
     fn from(container: Container) -> Self {
-        match container {
-            // Container::Ignored(_) => todo!(),
-            Container::Running(container) => ShowContainer {
-                status: "Running".into(),
-                id: container.id.unwrap_or_else(|| "-".into()),
-                image: container.image.unwrap_or_else(|| "-".into()),
-                command: container.command.unwrap_or_else(|| "-".into()),
+        let builder = match container {
+            Container::Running(container) => ShowContainerBuilder {
+                status: "Running".to_string(),
+                id: container.id.unwrap_or_else(|| "-".to_string()),
+                image: container.image.unwrap_or_else(|| "-".to_string()),
+                command: container.command.unwrap_or_else(|| "-".to_string()),
                 created: container
                     .created
                     .map(|o| o.to_string())
-                    .unwrap_or_else(|| "-".into()),
+                    .unwrap_or_else(|| "-".to_string()),
                 names: container
                     .names
                     .map(|o| o.concat())
-                    .unwrap_or_else(|| "-".into()),
+                    .unwrap_or_else(|| "-".to_string()),
             },
-            Container::Queued(container) => ShowContainer {
+            Container::Queued(container) => ShowContainerBuilder {
                 status: container.status().to_string(),
                 id: container.id(),
-                image: "-".into(),
-                command: container.command().into(),
-                created: "-".into(),
-                names: "-".into(),
+                command: container.command().to_string(),
+                ..Default::default()
             },
-        }
+        };
+        builder.build()
     }
 }
 
@@ -58,7 +101,7 @@ fn get_max_lens(containers: &[ShowContainer], pad: usize) -> [usize; 6] {
 }
 
 fn get_print_line(container: ShowContainer, max_lens: [usize; 6]) -> String {
-    [
+    let line = [
         container.status,
         container.id,
         container.image,
@@ -69,7 +112,13 @@ fn get_print_line(container: ShowContainer, max_lens: [usize; 6]) -> String {
     .iter()
     .zip(max_lens)
     .map(|(s, width)| pad_str(s, width, Alignment::Left, None))
-    .collect()
+    .collect::<String>();
+    if line.starts_with("Running") {
+        return style(line).bold().green().to_string();
+    } else if line.starts_with("Paused") {
+        return style(line).color256(8).to_string();
+    }
+    line
 }
 
 const HEADERS: [&str; 6] = ["status", "id", "image", "command", "created", "names"];
