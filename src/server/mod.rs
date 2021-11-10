@@ -8,7 +8,7 @@ pub(self) use list_containers::*;
 pub(self) use queue_container::*;
 pub use startup::*;
 
-use crate::domain::QueuedContainer;
+use crate::domain::{QueuedContainer, RunningContainerId};
 use crate::error_chain_fmt;
 use axum::{
     body::{Bytes, Full},
@@ -22,12 +22,14 @@ use std::{collections::VecDeque, convert::Infallible};
 
 struct State {
     queued_containers: Mutex<VecDeque<QueuedContainer>>,
+    running_container: Mutex<Option<RunningContainerId>>,
 }
 
 impl State {
     fn new() -> Self {
         Self {
             queued_containers: Mutex::new(VecDeque::new()),
+            running_container: Mutex::new(None),
         }
     }
 }

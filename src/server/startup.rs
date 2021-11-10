@@ -37,7 +37,8 @@ impl Server {
         let (tx, rx) = mpsc::channel(8);
         let launcher_task = tokio::spawn({
             let shared_state = Arc::clone(&shared_state);
-            async move { start_launcher_task(shared_state, rx).await }
+            let tx = tx.clone();
+            async move { start_launcher_task(shared_state, tx, rx).await }
         });
 
         let app = Router::new()

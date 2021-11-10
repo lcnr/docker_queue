@@ -1,3 +1,5 @@
+#![allow(clippy::enum_variant_names)]
+
 pub mod client;
 pub mod configuration;
 pub mod domain;
