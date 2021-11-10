@@ -45,7 +45,7 @@ impl State {
     async fn run_first_container_in_queue(&self) -> Result<()> {
         let container = self.queued_containers.lock().unwrap().pop_front();
         if let Some(container) = container {
-            run_container(container).await?;
+            let _id = run_container(container).await?;
         }
         Ok(())
     }
@@ -64,10 +64,11 @@ impl State {
     // }
 }
 
-#[tracing::instrument(name = "Run container", skip(container), fields(container = %container.id()))]
+// #[tracing::instrument(name = "Run container", skip(container), fields(container = %container.id()))]
 async fn run_container(container: QueuedContainer) -> Result<RunningContainerId> {
+    info!("{:#?}", container.get_cmd_args());
     let output = Command::new("docker")
-        .args(container.get_cmd_args())
+        .args(container.get_cmd_args()?)
         .output()
         .await
         .context("Failed to execute docker run command.")?;

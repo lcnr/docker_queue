@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use bollard::{
     container::{self, RemoveContainerOptions, StartContainerOptions},
     Docker,
@@ -10,6 +10,8 @@ use docker_queue::{
     telemetry::{get_subscriber, init_subscriber},
 };
 use once_cell::sync::Lazy;
+use std::time::Duration;
+use tokio::time::{sleep, timeout};
 
 // Ensure that 'tracing' stack is only initialized once using `once_cell`
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -36,6 +38,37 @@ impl TestApp {
             .expect("Failed to get string from buffer.");
         self.client.writer.clear();
         output
+    }
+
+    /// Waits for a container to show as "Running", to identify the container
+    /// the line that shows it should contain `check`.
+    /// Return all lines that match.
+    pub async fn wait_for_running_container(
+        &mut self,
+        check: &str,
+        timeout_secs: u64,
+    ) -> Result<Vec<String>> {
+        match timeout(Duration::from_secs(timeout_secs), async {
+            loop {
+                sleep(Duration::from_millis(250)).await;
+                self.client.list_containers().await?;
+                let output = self.get_client_output();
+                let lines = output
+                    .lines()
+                    .filter(|line| line.contains(check) && line.contains("Running"))
+                    .map(String::from)
+                    .collect::<Vec<_>>();
+                if lines.len() > 0 {
+                    break Ok::<_, anyhow::Error>(lines);
+                }
+            }
+        })
+        .await
+        {
+            Ok(Ok(lines)) => Ok(lines),
+            Ok(error) => error,
+            Err(_) => Err(anyhow!("Timeout")),
+        }
     }
 }
 

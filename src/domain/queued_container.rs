@@ -1,4 +1,5 @@
 use crate::error_chain_fmt;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -67,12 +68,10 @@ impl QueuedContainer {
         })
     }
 
-    pub fn get_cmd_args(&self) -> Vec<&str> {
-        self.command
-            .split_whitespace()
-            .into_iter()
-            .skip(1)
-            .collect::<Vec<_>>()
+    pub fn get_cmd_args(&self) -> Result<Vec<String>> {
+        let args = shellwords::split(self.command.split_once(' ').unwrap().1)
+            .context("Failed to split args.")?;
+        Ok(args)
     }
 
     /// Get a reference to the queued container's id.
@@ -131,5 +130,24 @@ mod tests {
         // Invalid commands
         assert_err!(QueuedContainer::new("docker run some_image"));
         assert_err!(QueuedContainer::new("docker run --detach=false some_image"));
+    }
+
+    #[test]
+    fn get_cmd_args_handle_quoted_strings() {
+        let command = "docker run -d --rm alpine sh -c \"sleep 30 && echo something\"";
+        let container = QueuedContainer::new(command).unwrap();
+        let args = container.get_cmd_args().unwrap();
+        assert_eq!(
+            args,
+            vec![
+                "run",
+                "-d",
+                "--rm",
+                "alpine",
+                "sh",
+                "-c",
+                "sleep 30 && echo something"
+            ]
+        );
     }
 }

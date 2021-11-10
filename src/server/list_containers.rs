@@ -37,13 +37,6 @@ pub async fn get_running_containers() -> Result<Vec<ContainerSummaryInner>> {
         filters,
         ..Default::default()
     });
-
-    let containers = docker
-        .list_containers(options)
-        .await?
-        .into_iter()
-        .map(|container| container)
-        .collect::<Vec<_>>();
-
+    let containers = docker.list_containers(options).await?;
     Ok(containers)
 }

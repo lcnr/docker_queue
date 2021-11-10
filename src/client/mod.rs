@@ -1,6 +1,5 @@
 mod list_containers;
 mod queue_container;
-mod start_container;
 
 use crate::error_chain_fmt;
 use axum::http::StatusCode;
