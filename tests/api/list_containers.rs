@@ -22,8 +22,11 @@ async fn list_containers_contains_running_containers() {
 async fn list_containers_contains_queued_containers() {
     // Arrange
     let mut app = spawn_app().await;
-    let name = "docker run -d some_image";
-    app.client.queue_container(name, true).await.unwrap();
+    let name = "docker run -d some_image".to_string();
+    app.client
+        .queue_container(name.clone(), false, true)
+        .await
+        .unwrap();
     println!("{}", app.get_client_output());
 
     // Act
@@ -32,5 +35,5 @@ async fn list_containers_contains_queued_containers() {
     println!("{}", output);
 
     // Assert
-    assert!(output.contains(name));
+    assert!(output.contains(&name));
 }

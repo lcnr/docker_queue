@@ -32,6 +32,9 @@ enum SubCommand {
 struct QueueContainer {
     /// A docker run command, should include a detach flag as "-d" or "--detach"
     command: String,
+    /// Treats the command as a file path to read.
+    #[clap(long)]
+    path: bool,
     /// The container gets queued but not started even if the queue is empty
     #[clap(long)]
     paused: bool,
@@ -51,7 +54,7 @@ async fn main() -> Result<()> {
         let mut client = ClientApp::new(opts.port, std::io::stdout());
         match opts.subcmd {
             SubCommand::List => client.list_containers().await?,
-            SubCommand::Queue(opts) => client.queue_container(opts.command, opts.paused).await?,
+            SubCommand::Queue(opts) => client.queue_container(opts.command, opts.path, opts.paused).await?,
             SubCommand::Remove => todo!(),
             SubCommand::Serve => {}
         }

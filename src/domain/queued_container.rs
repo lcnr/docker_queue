@@ -44,10 +44,12 @@ impl QueuedContainer {
         let id = Uuid::new_v4();
         let command: String = command.into();
         if !command.starts_with("docker run") {
-            return Err(QueuedContainerError::InvalidQueuedCommand(
-                "Should start with \"docker run\"".into(),
-            ));
+            return Err(QueuedContainerError::InvalidQueuedCommand(format!(
+                "Should start with \"docker run\": {:?}",
+                command
+            )));
         }
+        let command = command.replace("\n", " ").replace("\\", "");
         let detach_flags = command
             .split_whitespace()
             .skip(2)
@@ -56,9 +58,10 @@ impl QueuedContainer {
             .count();
 
         if detach_flags != 1 {
-            return Err(QueuedContainerError::InvalidQueuedCommand(
-                "Include a detach flag such as: \"-d\" or \"--detach\"".into(),
-            ));
+            return Err(QueuedContainerError::InvalidQueuedCommand(format!(
+                "Include a detach flag such as: \"-d\" or \"--detach\": {:?}",
+                command
+            )));
         }
 
         Ok(Self {
@@ -112,6 +115,7 @@ impl QueuedContainer {
 mod tests {
     use super::*;
     use claim::{assert_err, assert_ok};
+    use test_case::test_case;
 
     #[test]
     fn reject_queued_containers_without_run() {
@@ -149,5 +153,14 @@ mod tests {
                 "sleep 30 && echo something"
             ]
         );
+    }
+
+    #[test_case("docker run --rm -d \n\talpine sleep 3\n"; "with spaces")]
+    #[test_case("docker run --rm -d\\\n\talpine sleep 3\n"; "without spaces")]
+    #[test_case("docker run\\\n--rm\\\n-d\\\n\talpine sleep 3\n"; "more lines")]
+    fn get_cmd_args_handle_multiple_lines<'a>(command: &'a str) {
+        let container = QueuedContainer::new(command).unwrap();
+        let args = container.get_cmd_args().unwrap();
+        assert_eq!(args, vec!["run", "--rm", "-d", "alpine", "sleep", "3"]);
     }
 }
