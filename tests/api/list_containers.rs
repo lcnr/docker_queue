@@ -7,7 +7,7 @@ async fn list_containers_contains_running_containers() {
     let container_id = run_sleeping_container(120).await.unwrap();
 
     // Act
-    app.client.list_containers().await.unwrap();
+    app.client.list_containers(true).await.unwrap();
     let output = app.get_client_output();
     println!("{}", output);
 
@@ -30,7 +30,7 @@ async fn list_containers_contains_queued_containers() {
     println!("{}", app.get_client_output());
 
     // Act
-    app.client.list_containers().await.unwrap();
+    app.client.list_containers(true).await.unwrap();
     let output = app.get_client_output();
     println!("{}", output);
 

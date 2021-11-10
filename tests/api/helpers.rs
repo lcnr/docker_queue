@@ -51,7 +51,7 @@ impl TestApp {
         match timeout(Duration::from_secs(timeout_secs), async {
             loop {
                 sleep(Duration::from_millis(250)).await;
-                self.client.list_containers().await?;
+                self.client.list_containers(true).await?;
                 let output = self.get_client_output();
                 let lines = output
                     .lines()

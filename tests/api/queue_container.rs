@@ -26,7 +26,7 @@ async fn queue_container_runs_if_no_running_containers() {
     // Arrange
     let mut app = spawn_app().await;
     let command =
-        "docker run -d --rm alpine sh -c \"sleep 5 && echo queue_container_runs_if_no_running_containers\"".into();
+        "docker run -d --rm alpine sh -c \"sleep 2 && echo queue_container_runs_if_no_running_containers\"".into();
 
     // Act
     app.client
@@ -35,7 +35,7 @@ async fn queue_container_runs_if_no_running_containers() {
         .unwrap();
     println!("{}", app.get_client_output());
     let lines = app
-        .wait_for_running_container("queue_container_runs_if_no_running_containers", 10)
+        .wait_for_running_container("queue_container_runs_if_no_running_containers", 15)
         .await
         .unwrap();
     println!("{:?}", lines);
@@ -67,7 +67,7 @@ async fn queue_container_queues_if_already_running() {
     app.wait_for_running_container("queue_container_queues_if_already_running1", 10)
         .await
         .unwrap();
-    app.client.list_containers().await.unwrap();
+    app.client.list_containers(true).await.unwrap();
     let output = app.get_client_output();
     println!("{}", output);
 

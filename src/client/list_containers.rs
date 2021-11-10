@@ -15,6 +15,7 @@ struct ShowContainer {
 const COMMAND_MAX_LEN: usize = 40;
 
 struct ShowContainerBuilder {
+    show_all: bool,
     status: String,
     id: String,
     image: String,
@@ -26,7 +27,7 @@ struct ShowContainerBuilder {
 impl ShowContainerBuilder {
     fn build(self) -> ShowContainer {
         let mut command = self.command;
-        if command.len() > COMMAND_MAX_LEN {
+        if !self.show_all && (command.len() > COMMAND_MAX_LEN) {
             command = command
                 .chars()
                 .take(COMMAND_MAX_LEN - 3)
@@ -42,6 +43,11 @@ impl ShowContainerBuilder {
             names: self.names,
         }
     }
+
+    fn show_all(mut self, show_all: bool) -> Self {
+        self.show_all = show_all;
+        self
+    }
 }
 
 impl Default for ShowContainerBuilder {
@@ -53,11 +59,12 @@ impl Default for ShowContainerBuilder {
             command: "-".to_string(),
             created: "-".to_string(),
             names: "-".to_string(),
+            show_all: false,
         }
     }
 }
 
-impl From<Container> for ShowContainer {
+impl From<Container> for ShowContainerBuilder {
     fn from(container: Container) -> Self {
         let builder = match container {
             Container::Running(container) => ShowContainerBuilder {
@@ -73,6 +80,7 @@ impl From<Container> for ShowContainer {
                     .names
                     .map(|o| o.concat())
                     .unwrap_or_else(|| "-".to_string()),
+                ..Default::default()
             },
             Container::Queued(container) => ShowContainerBuilder {
                 status: container.status().to_string(),
@@ -81,7 +89,7 @@ impl From<Container> for ShowContainer {
                 ..Default::default()
             },
         };
-        builder.build()
+        builder
     }
 }
 
@@ -136,12 +144,16 @@ impl<W: std::io::Write> ClientApp<W> {
             .context("Failed to deserealize containers.")
     }
 
-    pub async fn list_containers(&mut self) -> Result<()> {
+    pub async fn list_containers(&mut self, show_all: bool) -> Result<()> {
         let containers = self
             .get_containers()
             .await?
             .into_iter()
-            .map(ShowContainer::from)
+            .map(|container| {
+                ShowContainerBuilder::from(container)
+                    .show_all(show_all)
+                    .build()
+            })
             .collect::<Vec<_>>();
 
         let max_lens = get_max_lens(&containers, 2);
