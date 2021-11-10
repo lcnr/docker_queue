@@ -66,6 +66,9 @@ pub(super) async fn start_launcher_task(
             },
             TaskMessage::RunningFinished => {
                 *state.running_container.lock().unwrap() = None;
+                tx.send(TaskMessage::CheckRun)
+                    .await
+                    .expect("Receiver dropped.");
                 Ok(())
             }
             TaskMessage::Error(error) => Err(error),

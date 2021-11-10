@@ -42,14 +42,14 @@ async fn queue_container_queues_if_already_running() {
     // Arrange
     let mut app = spawn_app().await;
     let command1 =
-        "docker run -d --rm alpine sh -c \"sleep 5 && echo queue_container_queues_if_already_running1\"";
+        "docker run -d --rm alpine sh -c \"sleep 2 && echo queue_container_queues_if_already_running1\"";
     let command2 =
-        "docker run -d --rm alpine sh -c \"sleep 5 && echo queue_container_queues_if_already_running2\"";
+        "docker run -d --rm alpine sh -c \"sleep 2 && echo queue_container_queues_if_already_running2\"";
 
     // Act
     app.client.queue_container(command1, false).await.unwrap();
     println!("{}", app.get_client_output());
-    app.client.queue_container(command2, false).await.unwrap();
+    app.client.queue_container(command2, true).await.unwrap();
     println!("{}", app.get_client_output());
     app.wait_for_running_container("queue_container_queues_if_already_running1", 10)
         .await
@@ -68,7 +68,7 @@ async fn queue_container_queues_if_already_running() {
         .filter(|line| line.contains("queue_container_queues_if_already_running2"))
         .collect::<String>();
     assert!(line1.contains("Running"), "{:?}", line1);
-    assert!(line2.contains("Queued"), "{:?}", line2);
+    assert!(line2.contains("Paused"), "{:?}", line2);
 }
 
 #[tokio::test]
@@ -76,7 +76,7 @@ async fn queue_container_gets_removed_from_running_state_when_finish_execution()
     // Arrange
     let mut app = spawn_app().await;
     let command =
-        "docker run -d --rm alpine sh -c \"sleep 5 && echo queue_container_gets_removed_from_running_state_when_finish_execution\"";
+        "docker run -d --rm alpine sh -c \"sleep 2 && echo queue_container_gets_removed_from_running_state_when_finish_execution\"";
 
     // Act
     app.client.queue_container(command, false).await.unwrap();
@@ -100,6 +100,30 @@ async fn queue_container_gets_removed_from_running_state_when_finish_execution()
             }
         }
     })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn queue_container_runs_after_running_container_finish_execution() {
+    // Arrange
+    let mut app = spawn_app().await;
+    let command1 =
+        "docker run -d --rm alpine sh -c \"sleep 2 && echo queue_container_runs_after_running_container_finish_execution1\"";
+    let command2 =
+        "docker run -d --rm alpine sh -c \"sleep 2 && echo queue_container_runs_after_running_container_finish_execution2\"";
+
+    // Act
+    app.client.queue_container(command1, false).await.unwrap();
+    println!("{}", app.get_client_output());
+    app.client.queue_container(command2, false).await.unwrap();
+    println!("{}", app.get_client_output());
+
+    // Assert
+    app.wait_for_running_container(
+        "queue_container_runs_after_running_container_finish_execution2",
+        20,
+    )
     .await
     .unwrap();
 }
