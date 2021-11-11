@@ -23,7 +23,7 @@ impl State {
             .lock()
             .unwrap()
             .clone()
-            .map(|o| o.as_ref().to_string());
+            .map(|id| id.into());
         let mut containers = get_running_containers()
             .await?
             .into_iter()

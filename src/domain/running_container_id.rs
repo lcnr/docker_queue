@@ -10,6 +10,12 @@ impl RunningContainerId {
     }
 }
 
+impl From<RunningContainerId> for String {
+    fn from(container: RunningContainerId) -> Self {
+        container.0
+    }
+}
+
 impl AsRef<str> for RunningContainerId {
     fn as_ref(&self) -> &str {
         self.0.as_str()
