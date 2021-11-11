@@ -1,5 +1,8 @@
 use super::State;
-use crate::{domain::Container, server::ServerError};
+use crate::{
+    domain::{Container, RunningContainer},
+    server::ServerError,
+};
 use anyhow::Result;
 use axum::{extract::Extension, Json};
 use bollard::{container::ListContainersOptions, models::ContainerSummaryInner, Docker};
@@ -15,10 +18,22 @@ pub(super) async fn list_containers(
 
 impl State {
     pub(super) async fn get_containers(&self) -> Result<Vec<Container>> {
+        let running_id = self
+            .running_container
+            .lock()
+            .unwrap()
+            .clone()
+            .map(|o| o.as_ref().to_string());
         let mut containers = get_running_containers()
             .await?
             .into_iter()
-            .map(|container| Container::Running(Box::new(container)))
+            .map(|container| {
+                if container.id == running_id {
+                    Container::Running(Box::new(RunningContainer::Tracked(container)))
+                } else {
+                    Container::Running(Box::new(RunningContainer::External(container)))
+                }
+            })
             .collect::<Vec<_>>();
         let mut queued_containers = { self.queued_containers.lock().unwrap().clone() }
             .into_iter()

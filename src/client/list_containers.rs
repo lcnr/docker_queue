@@ -1,5 +1,5 @@
 use super::ClientApp;
-use crate::domain::Container;
+use crate::domain::{Container, RunningContainer};
 use anyhow::{Context, Result};
 use console::{pad_str, style, Alignment};
 
@@ -10,6 +10,7 @@ struct ShowContainer {
     command: String,
     created: String,
     names: String,
+    external: bool,
 }
 
 const COMMAND_MAX_LEN: usize = 40;
@@ -22,6 +23,7 @@ struct ShowContainerBuilder {
     command: String,
     created: String,
     names: String,
+    external: bool,
 }
 
 impl ShowContainerBuilder {
@@ -41,6 +43,7 @@ impl ShowContainerBuilder {
             command,
             created: self.created,
             names: self.names,
+            external: self.external,
         }
     }
 
@@ -60,6 +63,32 @@ impl Default for ShowContainerBuilder {
             created: "-".to_string(),
             names: "-".to_string(),
             show_all: false,
+            external: false,
+        }
+    }
+}
+
+impl From<RunningContainer> for ShowContainerBuilder {
+    fn from(container: RunningContainer) -> Self {
+        let (container, external) = match container {
+            RunningContainer::Tracked(container) => (container, false),
+            RunningContainer::External(container) => (container, true),
+        };
+        ShowContainerBuilder {
+            status: "Running".to_string(),
+            id: container.id.unwrap_or_else(|| "-".to_string()),
+            image: container.image.unwrap_or_else(|| "-".to_string()),
+            command: container.command.unwrap_or_else(|| "-".to_string()),
+            created: container
+                .created
+                .map(|o| o.to_string())
+                .unwrap_or_else(|| "-".to_string()),
+            names: container
+                .names
+                .map(|o| o.concat())
+                .unwrap_or_else(|| "-".to_string()),
+            external,
+            ..Default::default()
         }
     }
 }
@@ -67,21 +96,7 @@ impl Default for ShowContainerBuilder {
 impl From<Container> for ShowContainerBuilder {
     fn from(container: Container) -> Self {
         let builder = match container {
-            Container::Running(container) => ShowContainerBuilder {
-                status: "Running".to_string(),
-                id: container.id.unwrap_or_else(|| "-".to_string()),
-                image: container.image.unwrap_or_else(|| "-".to_string()),
-                command: container.command.unwrap_or_else(|| "-".to_string()),
-                created: container
-                    .created
-                    .map(|o| o.to_string())
-                    .unwrap_or_else(|| "-".to_string()),
-                names: container
-                    .names
-                    .map(|o| o.concat())
-                    .unwrap_or_else(|| "-".to_string()),
-                ..Default::default()
-            },
+            Container::Running(container) => (*container).into(),
             Container::Queued(container) => ShowContainerBuilder {
                 status: container.status().to_string(),
                 id: container.id(),
@@ -122,7 +137,11 @@ fn get_print_line(container: ShowContainer, max_lens: [usize; 6]) -> String {
     .map(|(s, width)| pad_str(s, width, Alignment::Left, None))
     .collect::<String>();
     if line.starts_with("Running") {
-        return style(line).bold().green().to_string();
+        if container.external {
+            return style(line).bold().color256(8).to_string();
+        } else {
+            return style(line).bold().green().to_string();
+        }
     } else if line.starts_with("Paused") {
         return style(line).color256(8).to_string();
     }

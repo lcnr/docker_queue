@@ -1,9 +1,8 @@
-use super::QueuedContainer;
-use bollard::models::ContainerSummaryInner;
+use super::{QueuedContainer, RunningContainer};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Container {
-    Running(Box<ContainerSummaryInner>),
+    Running(Box<RunningContainer>),
     Queued(QueuedContainer),
 }
