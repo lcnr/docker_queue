@@ -1,12 +1,17 @@
+use std::path::Path;
+
 use crate::error_chain_fmt;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use tokio::{fs::File, io::AsyncReadExt};
 use uuid::Uuid;
 
 #[derive(thiserror::Error)]
 pub enum QueuedContainerError {
     #[error("Invalid docker run command: {0}")]
     InvalidQueuedCommand(String),
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
 }
 
 impl std::fmt::Debug for QueuedContainerError {
@@ -69,6 +74,20 @@ impl QueuedContainer {
             command,
             status: QueuedContainerStatus::Paused,
         })
+    }
+
+    pub async fn from_path(path: impl AsRef<Path>) -> Result<Self, QueuedContainerError> {
+        let mut f = File::open(path).await.context("Failed to open path.")?;
+        let mut buffer = String::new();
+        f.read_to_string(&mut buffer)
+            .await
+            .context("Failed to read file.")?;
+        let command = buffer
+            .lines()
+            .filter(|line| !line.trim_start().starts_with('#'))
+            .collect::<Vec<_>>()
+            .join("\n");
+        Self::new(command)
     }
 
     pub fn get_cmd_args(&self) -> Result<Vec<String>> {
@@ -162,5 +181,15 @@ mod tests {
         let container = QueuedContainer::new(command).unwrap();
         let args = container.get_cmd_args().unwrap();
         assert_eq!(args, vec!["run", "--rm", "-d", "alpine", "sleep", "3"]);
+    }
+
+    #[test_case("tests/examples/one_line.sh"; "One line")]
+    #[test_case("tests/examples/two_lines.sh"; "Two lines")]
+    #[test_case("tests/examples/with_blankline.sh"; "With blank line")]
+    #[test_case("tests/examples/with_bash.sh"; "With bash comment")]
+    #[tokio::test]
+    async fn create_queued_container_from_path<'a>(path: &'a str) {
+        let queued_container = QueuedContainer::from_path(path).await;
+        assert_ok!(queued_container);
     }
 }

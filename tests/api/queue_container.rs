@@ -149,24 +149,3 @@ async fn queue_container_runs_after_running_container_finish_execution() {
     .await
     .unwrap();
 }
-
-#[test_case("tests/api/examples/one_line.sh"; "One line")]
-#[test_case("tests/api/examples/two_lines.sh"; "Two lines")]
-#[test_case("tests/api/examples/with_blankline.sh"; "With blank line")]
-#[test_case("tests/api/examples/complex.sh"; "Complex")]
-#[tokio::test]
-async fn queue_container_queues_a_file_path<'a>(path: &'a str) {
-    // Arrange
-    let mut app = spawn_app().await;
-
-    // Act
-    app.client
-        .queue_container(path.into(), true, true)
-        .await
-        .unwrap();
-    let output = app.get_client_output();
-    println!("{}", output);
-
-    // Assert
-    assert!(output.contains("added to queue"));
-}
