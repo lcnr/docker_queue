@@ -1,6 +1,5 @@
 use crate::helpers::spawn_app;
 use std::time::Duration;
-use test_case::test_case;
 use tokio::time::{sleep, timeout};
 
 #[tokio::test]

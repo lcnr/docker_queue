@@ -155,8 +155,18 @@ mod tests {
         assert_err!(QueuedContainer::new("docker run --detach=false some_image"));
     }
 
+    #[test_case("tests/examples/one_line.sh"; "One line")]
+    #[test_case("tests/examples/two_lines.sh"; "Two lines")]
+    #[test_case("tests/examples/with_blankline.sh"; "With blank line")]
+    #[test_case("tests/examples/with_bash.sh"; "With bash comment")]
+    #[tokio::test]
+    async fn create_queued_container_from_path<'a>(path: &'a str) {
+        let queued_container = QueuedContainer::from_path(path).await;
+        assert_ok!(queued_container);
+    }
+
     #[test]
-    fn get_cmd_args_handle_quoted_strings() {
+    fn get_cmd_args_handle_quoted_strings_docker_cmd() {
         let command = "docker run -d --rm alpine sh -c \"sleep 30 && echo something\"";
         let container = QueuedContainer::new(command).unwrap();
         let args = container.get_cmd_args().unwrap();
@@ -183,13 +193,14 @@ mod tests {
         assert_eq!(args, vec!["run", "--rm", "-d", "alpine", "sleep", "3"]);
     }
 
-    #[test_case("tests/examples/one_line.sh"; "One line")]
-    #[test_case("tests/examples/two_lines.sh"; "Two lines")]
-    #[test_case("tests/examples/with_blankline.sh"; "With blank line")]
-    #[test_case("tests/examples/with_bash.sh"; "With bash comment")]
-    #[tokio::test]
-    async fn create_queued_container_from_path<'a>(path: &'a str) {
-        let queued_container = QueuedContainer::from_path(path).await;
-        assert_ok!(queued_container);
+    #[test]
+    fn get_cmd_args_handle_quotes_on_options() {
+        let command = "docker run --rm -d --gpus '\"device=0\"' --ipc=host";
+        let container = QueuedContainer::new(command).unwrap();
+        let args = container.get_cmd_args().unwrap();
+        assert_eq!(
+            args,
+            vec!["run", "--rm", "-d", "--gpus", "\"device=0\"", "--ipc=host"]
+        );
     }
 }
