@@ -1,8 +1,9 @@
-use std::path::Path;
-
 use crate::error_chain_fmt;
 use anyhow::{Context, Result};
+use once_cell::sync::OnceCell;
+use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
+use std::{env, path::Path};
 use tokio::{fs::File, io::AsyncReadExt};
 use uuid::Uuid;
 
@@ -10,6 +11,8 @@ use uuid::Uuid;
 pub enum QueuedContainerError {
     #[error("Invalid docker run command: {0}")]
     InvalidQueuedCommand(String),
+    #[error("Env vars not found: {0}")]
+    EnvVarsNotFound(String),
     #[error(transparent)]
     UnexpectedError(#[from] anyhow::Error),
 }
@@ -54,6 +57,8 @@ impl QueuedContainer {
                 command
             )));
         }
+
+        // Check if detach is present
         let command = command.replace("\n", " ").replace("\\", "");
         let detach_flags = command
             .split_whitespace()
@@ -61,12 +66,32 @@ impl QueuedContainer {
             .take_while(|x| x.starts_with('-'))
             .filter(|&x| (x == "-d") | (x == "--detach") | (x == "--detach=true"))
             .count();
-
         if detach_flags != 1 {
             return Err(QueuedContainerError::InvalidQueuedCommand(format!(
                 "Include a detach flag such as: \"-d\" or \"--detach\": {:?}",
                 command
             )));
+        }
+
+        // Replace env vars
+        let mut vars_not_found = String::new();
+        static RE: OnceCell<Regex> = OnceCell::new();
+        let re = RE.get_or_init(|| Regex::new(r"\$(\w+)").unwrap());
+        let command = re
+            .replace_all(&command, |caps: &Captures| {
+                let var_name = &caps[1];
+                match env::var(var_name) {
+                    Ok(value) => value,
+                    Err(_) => {
+                        vars_not_found.push_str(var_name);
+                        "-".to_string()
+                    }
+                }
+            })
+            .to_string();
+
+        if !vars_not_found.is_empty() {
+            return Err(QueuedContainerError::EnvVarsNotFound(vars_not_found));
         }
 
         Ok(Self {
@@ -132,6 +157,8 @@ impl QueuedContainer {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use super::*;
     use claim::{assert_err, assert_ok};
     use test_case::test_case;
@@ -163,6 +190,27 @@ mod tests {
     async fn create_queued_container_from_path<'a>(path: &'a str) {
         let queued_container = QueuedContainer::from_path(path).await;
         assert_ok!(queued_container);
+    }
+
+    #[test]
+    fn create_queued_container_handles_env_vars() {
+        env::set_var("SOME_VAR", "some_value");
+        let command = "docker run -d --rm -e SOME_VAR=$SOME_VAR alpine sleep 3";
+        let container = QueuedContainer::new(command).unwrap();
+        let args = container.get_cmd_args().unwrap();
+        assert_eq!(
+            args,
+            vec![
+                "run",
+                "-d",
+                "--rm",
+                "-e",
+                "SOME_VAR=some_value",
+                "alpine",
+                "sleep",
+                "3"
+            ]
+        );
     }
 
     #[test]
