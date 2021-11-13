@@ -90,7 +90,11 @@ impl State {
                 let id = run_container(container).await?;
                 *self.running_container.lock().unwrap() = Some(id.clone());
                 return Ok(Some(id));
+            } else {
+                info!("Nothing in queue.");
             }
+        } else {
+            info!("There is something running already.");
         }
         Ok(None)
     }
