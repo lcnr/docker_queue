@@ -104,8 +104,10 @@ impl State {
 async fn run_container(
     container: QueuedContainer,
 ) -> Result<RunningContainerId, LauncherTaskError> {
+    let args = container.get_cmd_args()?;
+    info!("args: {:?}", args);
     let output = Command::new("docker")
-        .args(container.get_cmd_args()?)
+        .args(args)
         .output()
         .await
         .context("Failed to execute docker run command.")?;
