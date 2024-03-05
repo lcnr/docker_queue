@@ -2,9 +2,7 @@ use std::io;
 use tracing::{subscriber::set_global_default, Subscriber};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
-use tracing_subscriber::{
-    fmt::MakeWriter, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry,
-};
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry};
 
 /// Compose multiple layers into a tracing subscriber
 pub fn get_subscriber<'a, F, W>(
@@ -13,7 +11,7 @@ pub fn get_subscriber<'a, F, W>(
     sink: F,
 ) -> impl Subscriber + Send + Sync
 where
-    F: MakeWriter<'a> + Fn() -> W + Send + Sync + 'static,
+    F: Fn() -> W + Send + Sync + 'static,
     W: io::Write,
 {
     let env_filter =
